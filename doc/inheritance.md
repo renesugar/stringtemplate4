@@ -28,7 +28,7 @@ class <name> {
  
 constants(typename, names) ::= "<names:{n | <constant(n,i)>}; separator={<\n>}>"
  
-constant(n) ::= "public static final int <typename>_<n>=<i>;"
+constant(n, i) ::= "public static final int <typename>_<n>=<i>;"
 ```
 
 Instead of copying and altering the entire group for Java 1.5, we can import the 1.4 group and alter just the part that changes, template `constants`:
@@ -43,7 +43,7 @@ public enum <typename> { <names; separator=", "> }
 >>
 ```
 
-Group Java1\_5 the inherited template classs will write template constants. The following sample code creates group objects referring to both template group files, creates and filled in instances of template class, and finally prints out the rendered text.
+Group Java1\_5 the inherited template class will write template constants. The following sample code creates group objects referring to both template group files, creates and filled in instances of template class, and finally prints out the rendered text.
 
 ```java
 public void test(String[] args) {

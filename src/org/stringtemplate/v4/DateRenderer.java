@@ -37,33 +37,37 @@ import java.util.*;
  * assumes {@code "short"} format. A prefix of {@code "date:"} or
  * {@code "time:"} shows only those components of the time object.
  */
-public class DateRenderer implements AttributeRenderer {
-    public static final Map<String,Integer> formatToInt =
-        new HashMap<String,Integer>() {
-            {
-                put("short", DateFormat.SHORT);
-                put("medium", DateFormat.MEDIUM);
-                put("long", DateFormat.LONG);
-                put("full", DateFormat.FULL);
+// using <Object> because this can handle Date and Calendar objects, which don't have a common supertype.
+public class DateRenderer implements AttributeRenderer<Object> {
+    public static final Map<String, Integer> formatToInt;
 
-                put("date:short", DateFormat.SHORT);
-                put("date:medium", DateFormat.MEDIUM);
-                put("date:long", DateFormat.LONG);
-                put("date:full", DateFormat.FULL);
+    static {
+        final Map<String, Integer> map = new HashMap<String, Integer>();
 
-                put("time:short", DateFormat.SHORT);
-                put("time:medium", DateFormat.MEDIUM);
-                put("time:long", DateFormat.LONG);
-                put("time:full", DateFormat.FULL);
-            }
-        };
+        map.put("short", DateFormat.SHORT);
+        map.put("medium", DateFormat.MEDIUM);
+        map.put("long", DateFormat.LONG);
+        map.put("full", DateFormat.FULL);
 
-	@Override
-    public String toString(Object o, String formatString, Locale locale) {
+        map.put("date:short", DateFormat.SHORT);
+        map.put("date:medium", DateFormat.MEDIUM);
+        map.put("date:long", DateFormat.LONG);
+        map.put("date:full", DateFormat.FULL);
+
+        map.put("time:short", DateFormat.SHORT);
+        map.put("time:medium", DateFormat.MEDIUM);
+        map.put("time:long", DateFormat.LONG);
+        map.put("time:full", DateFormat.FULL);
+
+        formatToInt = Collections.unmodifiableMap(map);
+    }
+
+    @Override
+    public String toString(Object value, String formatString, Locale locale) {
         Date d;
         if ( formatString==null ) formatString = "short";
-        if ( o instanceof Calendar ) d = ((Calendar)o).getTime();
-        else d = (Date)o;
+        if ( value instanceof Calendar ) d = ((Calendar)value).getTime();
+        else d = (Date)value;
         Integer styleI = formatToInt.get(formatString);
         DateFormat f;
         if ( styleI==null ) f = new SimpleDateFormat(formatString, locale);

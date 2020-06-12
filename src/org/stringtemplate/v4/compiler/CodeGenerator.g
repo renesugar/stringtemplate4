@@ -81,6 +81,18 @@ import org.stringtemplate.v4.*;
 		this.templateToken = templateToken;
 	}
 
+	public void addArgument(List<FormalArgument> args, Token t) {
+		String name = t.getText();
+		for (FormalArgument arg : args) {
+			if (arg.name.equals(name)) {
+				errMgr.compileTimeError(ErrorType.PARAMETER_REDEFINITION, templateToken, t, name);
+				return;
+			}
+		}
+
+		args.add(new FormalArgument(name));
+	}
+
 	// convience funcs to hide offensive sending of emit messages to
 	// CompilationState temp data object.
 
@@ -112,6 +124,18 @@ import org.stringtemplate.v4.*;
 	public void func(CommonTree id) { $template::state.func(templateToken, id); }
 	public void refAttr(CommonTree id) { $template::state.refAttr(templateToken, id); }
 	public int defineString(String s) { return $template::state.defineString(s); }
+
+	@Override
+	public void displayRecognitionError(String[] tokenNames, RecognitionException e) {
+		Token tokenWithPosition = e.token;
+		if (tokenWithPosition.getInputStream() == null) {
+			tokenWithPosition = input.getTreeAdaptor().getToken(input.LT(-1));
+		}
+
+		String hdr = getErrorHeader(e);
+		String msg = getErrorMessage(e, tokenNames);
+		errMgr.compileTimeError(ErrorType.SYNTAX_ERROR, templateToken, tokenWithPosition, hdr + " " + msg);
+	}
 }
 
 templateAndEOF : template[null,null] EOF; // hush warning; ignore
@@ -145,7 +169,7 @@ chunk
 element
 	:	^(INDENTED_EXPR INDENT compoundElement[$INDENT]) // ignore indent in front of IF and region blocks
 	|	compoundElement[null]
-	|	^(INDENTED_EXPR INDENT {$template::state.indent($INDENT);} singleElement {$template::state.emit(Bytecode.INSTR_DEDENT);})
+	|	^(INDENTED_EXPR INDENT {$template::state.indent($INDENT);} singleElement? {$template::state.emit(Bytecode.INSTR_DEDENT);})
 	|	singleElement
 	;
 
@@ -213,7 +237,7 @@ subtemplate returns [String name, int nargs]
 	List<FormalArgument> args = new ArrayList<FormalArgument>();
 }
 	:	^(	SUBTEMPLATE
-			(^(ARGS (ID {args.add(new FormalArgument($ID.text));})+))*
+			(^(ARGS (ID {addArgument(args, $ID.token);})+))*
 			{$nargs = args.size();}
 			template[$name,args]
 			{
@@ -331,14 +355,14 @@ prop:	^(PROP expr ID)						{emit1($PROP, Bytecode.INSTR_LOAD_PROP, $ID.text);}
 	;
 
 mapTemplateRef[int num_exprs]
-	:	^(	INCLUDE ID
+	:	^(	INCLUDE qualifiedId
 			{for (int i=1; i<=$num_exprs; i++) emit($INCLUDE,Bytecode.INSTR_NULL);}
 			args
 		)
 		{
-		if ( $args.passThru ) emit1($start, Bytecode.INSTR_PASSTHRU, $ID.text);
-		if ( $args.namedArgs ) emit1($INCLUDE, Bytecode.INSTR_NEW_BOX_ARGS, $ID.text);
-		else emit2($INCLUDE, Bytecode.INSTR_NEW, $ID.text, $args.n+$num_exprs);
+		if ( $args.passThru ) emit1($start, Bytecode.INSTR_PASSTHRU, $qualifiedId.text);
+		if ( $args.namedArgs ) emit1($INCLUDE, Bytecode.INSTR_NEW_BOX_ARGS, $qualifiedId.text);
+		else emit2($INCLUDE, Bytecode.INSTR_NEW, $qualifiedId.text, $args.n+$num_exprs);
 		}
 	|	subtemplate
 		{
@@ -366,11 +390,11 @@ mapTemplateRef[int num_exprs]
 
 includeExpr
 	:	^(EXEC_FUNC ID expr?)		{func($ID);}
-	|	^(INCLUDE ID args)
+	|	^(INCLUDE qualifiedId args)
 		{
-		if ( $args.passThru ) emit1($start, Bytecode.INSTR_PASSTHRU, $ID.text);
-		if ( $args.namedArgs ) emit1($INCLUDE, Bytecode.INSTR_NEW_BOX_ARGS, $ID.text);
-		else emit2($INCLUDE, Bytecode.INSTR_NEW, $ID.text, $args.n);
+		if ( $args.passThru ) emit1($start, Bytecode.INSTR_PASSTHRU, $qualifiedId.text);
+		if ( $args.namedArgs ) emit1($INCLUDE, Bytecode.INSTR_NEW_BOX_ARGS, $qualifiedId.text);
+		else emit2($INCLUDE, Bytecode.INSTR_NEW, $qualifiedId.text, $args.n);
 		}
 	|	^(INCLUDE_SUPER ID args)
 		{
@@ -405,6 +429,12 @@ primary
 			args        {emit1($INCLUDE_IND, Bytecode.INSTR_NEW_IND, $args.n);}
 		 )
 	|	^(TO_STR expr)	{emit($TO_STR, Bytecode.INSTR_TOSTR);}
+	;
+
+qualifiedId
+	:	^(SLASH qualifiedId ID)
+	|	^(SLASH ID)
+	|	ID
 	;
 
 arg : expr ;

@@ -67,7 +67,7 @@ package org.stringtemplate.v4.compiler;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ArrayList;
 import org.stringtemplate.v4.misc.*;
@@ -130,6 +130,18 @@ public void error(String msg) {
     group.errMgr.groupSyntaxError(ErrorType.SYNTAX_ERROR, getSourceName(), e, msg);
     recover(input, null);
 }
+
+public void addArgument(List<FormalArgument> args, Token t, Token defaultValueToken) {
+	String name = t.getText();
+	for (FormalArgument arg : args) {
+		if (arg.name.equals(name)) {
+			group.errMgr.compileTimeError(ErrorType.PARAMETER_REDEFINITION, null, t, name);
+			return;
+		}
+	}
+
+	args.add(new FormalArgument(name, defaultValueToken));
+}
 }
 
 @lexer::members {
@@ -190,8 +202,23 @@ groupName returns [String name]
 delimiters
     :	'delimiters' a=STRING ',' b=STRING
      	{
-     	group.delimiterStartChar=$a.getText().charAt(1);
-        group.delimiterStopChar=$b.getText().charAt(1);
+		boolean supported = true;
+		char startCharacter = $a.getText().charAt(1);
+		if (STGroup.isReservedCharacter(startCharacter)) {
+			group.errMgr.compileTimeError(ErrorType.UNSUPPORTED_DELIMITER, null, $a, String.valueOf(startCharacter));
+			supported = false;
+		}
+
+		char stopCharacter = $b.getText().charAt(1);
+		if (STGroup.isReservedCharacter(stopCharacter)) {
+			group.errMgr.compileTimeError(ErrorType.UNSUPPORTED_DELIMITER, null, $b, String.valueOf(stopCharacter));
+			supported = false;
+		}
+
+		if (supported) {
+			group.delimiterStartChar=$a.getText().charAt(1);
+			group.delimiterStopChar=$b.getText().charAt(1);
+		}
         }
     ;
 
@@ -262,7 +289,7 @@ formalArg[List<FormalArgument> args]
 			}
 			}
 		)
-		{$args.add(new FormalArgument($ID.text, $a));}
+		{addArgument($args, $ID, $a);}
     ;
 
 /*
@@ -290,7 +317,7 @@ dictDef
 	;
 
 dict returns [Map<String,Object> mapping]
-@init {mapping=new HashMap<String,Object>();}
+@init {mapping=new LinkedHashMap<String,Object>();}
 	:   '[' dictPairs[mapping] ']'
 	;
 

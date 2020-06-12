@@ -39,13 +39,17 @@ import java.util.Locale;
  *  For example, {@code %10d} emits a number as a decimal int padding to 10 char.
  *  This can even do {@code long} to {@code Date} conversions using the format string.</p>
  */
-public class NumberRenderer implements AttributeRenderer {
-	@Override
-    public String toString(Object o, String formatString, Locale locale) {
-        // o will be instanceof Number
-        if ( formatString==null ) return o.toString();
+public class NumberRenderer implements AttributeRenderer<Object> {
+    @Override
+    public String toString(Object value, String formatString, Locale locale) {
+        if ( formatString==null ) return value.toString();
         Formatter f = new Formatter(locale);
-        f.format(formatString, o);
-        return f.toString();
+        try {
+            f.format(formatString, value);
+            return f.toString();
+        }
+        finally {
+            f.close();
+        }
     }
 }

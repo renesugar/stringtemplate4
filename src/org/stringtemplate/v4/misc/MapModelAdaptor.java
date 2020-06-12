@@ -34,24 +34,45 @@ import org.stringtemplate.v4.STGroup;
 
 import java.util.Map;
 
-public class MapModelAdaptor implements ModelAdaptor {
-	@Override
-	public Object getProperty(Interpreter interp, ST self, Object o, Object property, String propertyName)
-		throws STNoSuchPropertyException
-	{
-		Object value;
-		Map<?, ?> map = (Map<?, ?>)o;
-		if ( property==null ) value = map.get(STGroup.DEFAULT_KEY);
-		else if ( property.equals("keys") ) value = map.keySet();
-		else if ( property.equals("values") ) value = map.values();
-		else if ( map.containsKey(property) ) value = map.get(property);
-		else if ( map.containsKey(propertyName) ) { // if can't find the key, try toString version
-			value = map.get(propertyName);
-		}
-		else value = map.get(STGroup.DEFAULT_KEY); // not found, use default
-		if ( value == STGroup.DICT_KEY ) {
-			value = property;
-		}
-		return value;
-	}
+public class MapModelAdaptor implements ModelAdaptor<Map<?, ?>> {
+    @Override
+    public Object getProperty(Interpreter interp, ST self, Map<?, ?> model, Object property, String propertyName)
+        throws STNoSuchPropertyException
+    {
+        Object value;
+        if ( property==null ) value = getDefaultValue(model);
+        else if ( containsKey(model, property) ) value = model.get(property);
+        else if ( containsKey(model, propertyName) ) { // if can't find the key, try toString version
+            value = model.get(propertyName);
+        }
+        else if ( property.equals("keys") ) value = model.keySet();
+        else if ( property.equals("values") ) value = model.values();
+        else value = getDefaultValue(model); // not found, use default
+        if ( value == STGroup.DICT_KEY ) {
+            value = property;
+        }
+        return value;
+    }
+
+    private static Boolean containsKey(Map<?, ?> map, Object key) {
+        try {
+            return map.containsKey(key);
+        }
+        catch (ClassCastException ex) {
+            // Map.containsKey is allowed to throw ClassCastException if the key
+            // cannot be compared to keys already in the map.
+            return false;
+        }
+    }
+
+    private static Object getDefaultValue(Map<?, ?> map) {
+        try {
+            return map.get(STGroup.DEFAULT_KEY);
+        }
+        catch (ClassCastException ex) {
+            // Map.containsKey is allowed to throw ClassCastException if the key
+            // cannot be compared to keys already in the map.
+            return false;
+        }
+    }
 }

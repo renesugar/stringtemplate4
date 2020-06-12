@@ -43,16 +43,19 @@ import java.util.Map;
  * <p>
  * Given {@code <a.foo>}, we look up {@code foo} via the adaptor if
  * {@code a instanceof M}.</p>
+ *
+ * @param <T>
+ *     the type of values this adaptor can handle.
  */
-public interface ModelAdaptor {
-	/**
-	 * Lookup property name in {@code o} and return its value.
-	 * <p>
-	 * {@code property} is normally a {@code String} but doesn't have to be.
-	 * E.g., if {@code o} is {@link Map}, {@code property} could be
-	 * any key type. If we need to convert to {@code String}, then it's done by
-	 * {@code ST} and passed in here.</p>
-	 */
-	Object getProperty(Interpreter interp, ST self, Object o, Object property, String propertyName)
-		throws STNoSuchPropertyException;
+public interface ModelAdaptor<T> {
+    /**
+     * Lookup property name in {@code o} and return its value.
+     * <p>
+     * {@code property} is normally a {@code String} but doesn't have to be.
+     * E.g., if {@code o} is {@link Map}, {@code property} could be
+     * any key type. If we need to convert to {@code String}, then it's done by
+     * {@code ST} and passed in here.</p>
+     */
+    Object getProperty(Interpreter interp, ST self, T model, Object property, String propertyName)
+        throws STNoSuchPropertyException;
 }
